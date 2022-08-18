@@ -49,16 +49,16 @@ def generate_request(batch_size, time_out, arrival_process, inter_arrival, trace
 	
 
 	#Change the value in for number of requests
-    for i in range (15): 
+    for i in range (len(trace_arrival)): 
         my_queue.append(MyRequest((total_delay)*1000,0,0))
         count +=1
         if 'exp' in arrival_process:
             delay = np.random.exponential(scale=(float(1/float(inter_arrival))), size=None) 
         else:   
-            delay = trace_arrival [i%2500000] 
+            delay = trace_arrival [i%2500000]
 
         if count < batch_size and total_delay + delay <= float(time_out):
-            sleep(delay)
+            #sleep(delay)
             total_delay += delay
         elif count == batch_size:
             t_out.append(total_delay)
@@ -71,9 +71,9 @@ def generate_request(batch_size, time_out, arrival_process, inter_arrival, trace
             serverless.MyServerless(count, float(total_delay)*1000, request_list, batch_size, inter_arrival, time_out, function_name).start()
             count = 0
             total_delay = 0.0
-            sleep(delay)
+            #sleep(delay)
         else:
-            sleep(time_out - total_delay)
+            #sleep(time_out - total_delay)
             total_delay = float(time_out)
             delayRemainder = delay - (time_out - total_delay)
             t_out.append(total_delay)
@@ -86,7 +86,7 @@ def generate_request(batch_size, time_out, arrival_process, inter_arrival, trace
             serverless.MyServerless(count, float(total_delay)*1000, request_list, batch_size, inter_arrival, time_out, function_name).start()
             count = 0
             total_delay = 0.0
-            sleep(delayRemainder)
+            #sleep(delayRemainder)
 
         timestamp += delay
 
@@ -109,7 +109,8 @@ if __name__ == '__main__':
    
     print("Starting Experiment for") 
     print("batch = {}\tarrival process = {}\ttiem out = {}\n".format(my_args.batch_size, my_args.arrival_process, my_args.time_out))
-    response = mylambda.update_function_configuration(FunctionName = 'mxnet-lambda-v2', MemorySize=my_args.memory)
+    #Irwin response = mylambda.update_function_configuration(FunctionName = 'mxnet-lambda-v2', MemorySize=my_args.memory)
+    
     generate_request(my_args.batch_size, my_args.time_out, my_args.arrival_process, my_args.inter_arrival, 
                     my_args.trace_path, my_args.function_name)
     print("Done batch = {}\tarrival process = {}\ttiem out = {}\n".format(my_args.batch_size, my_args.arrival_process, my_args.time_out))

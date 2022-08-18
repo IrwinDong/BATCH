@@ -8,6 +8,7 @@ import sys
 import base64
 import json
 import serverless
+from treelstmdata import TREE_12_SERVICE_TIME
 
 class MyRequest():
 	
@@ -31,11 +32,11 @@ class MyServerless(threading.Thread):
 		self.time_out = time_out
 		self.inter_arrival = inter_arrival
 		self.function_name = function_name
-		self.service_time = {1:1734.26, 2:2313.26, 3:2875.27, 4:3398.42, 5:3934.34,6:4531.25, 7:5047.03, 8:5581.86, 
-		            9:6079.07, 10:6724.86, 11:7292.53, 12:7807.46, 13:8375.48, 14:8985.00, 15:9542.51,16:10100.73, 
-					17:10595.58, 18:11476.64, 19:13429.97, 20:14089.95}
+		#self.service_time = {1:1734.26, 2:2313.26, 3:2875.27, 4:3398.42, 5:3934.34,6:4531.25, 7:5047.03, 8:5581.86, 
+		#            9:6079.07, 10:6724.86, 11:7292.53, 12:7807.46, 13:8375.48, 14:8985.00, 15:9542.51,16:10100.73, 
+		#			17:10595.58, 18:11476.64, 19:13429.97, 20:14089.95}
+		self.service_time = TREE_12_SERVICE_TIME
 		
-	
 	def send_request(self):
 		mylambda =  boto3.client('lambda')
 		mutex_lock2 = threading.Lock()
@@ -62,7 +63,8 @@ class MyServerless(threading.Thread):
 			              self.inter_arrival,self.time_out) # "exp"
 		mutex_1 = threading.Lock()
 		mutex_2 = threading.Lock()
-		batch_latency = float(self.send_request())
+		# Irwin: batch_latency = float(self.send_request())
+		batch_latency = self.service_time[self.batch_size]
 		
 		mutex_1.acquire()
 		with open (file_batch_latency, "a+") as fl:
@@ -71,7 +73,7 @@ class MyServerless(threading.Thread):
 		mutex_1.release()
 
 		with open (file_request_latency,"a+") as fp:
-                        my_clock_time = int(time.time()*100)
+			my_clock_time = int(time.time()*100)
 			for request in self.request_list:
 				request.latency = request.wait_time + float(batch_latency)
 				mutex_2.acquire()

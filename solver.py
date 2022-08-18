@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import expm
 from ortools.linear_solver import pywraplp
+from treelstmdata import TREE_12_SERVICE_TIME
 
 # Print iterations progress
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
@@ -149,6 +150,8 @@ def batchServiceTime(B, m, model):
 			v[i] = m * (i+1) + q
 
 		return v
+	elif model == 'Tree-LSTM':
+		pass
 	else:
 		print('The required model is not supported.')
 		exit(-1)
@@ -157,6 +160,8 @@ def batchServiceTime(B, m, model):
 	for k in range(1,B+1):
 		if model == 'mxnet-resnet50':
 			serv = t0 + t1*k + t2*m + t3*k**2 + t4*k*m + t5*m**2 + t6*k**3 + t7*m*k**2 + t8*k*m**2 + t9*m**3 + t10*k**4 + t11*m*k**3 + t12*(k**2)*(m**2) + t13*k*m**3 + t14*m**4
+		elif model == 'Tree-LSTM':
+			serv = TREE_12_SERVICE_TIME[k] / 1000
 		else:
 			serv = t0 + t1*k + t2*m + t3*k**2 + t4*k*m + t5*m**2 + t6*k**3 + t7*m*k**2 + t8*k*m**2 + t9*m**3
 		services.append(serv)
@@ -378,12 +383,14 @@ def solveOptimizationProblem(D0, D1, model, quantile, slo, constraint):
 		print('You can optimize either __latency__ or __cost__.')
 		exit(-1)
 
-	maxTime = 30.0
+	maxTime = 30.0 # percentile threshold
 	err = 0.01
 	
-	memories = [x for x in range(1280,3008+1,64)]
+	#memories = [x for x in range(1280,3008+1,64)]
+	memories = [x for x in range(1280,1280+1,1)]
 	timeouts = [x for x in np.arange(0.01,0.5,0.01)]
 	batches = [x for x in range(20,20+1,1)]
+	#batches = [x for x in range(100,100+1,1)]
 	matLatency = np.zeros((len(memories), len(timeouts), len(batches)))
 	matCost = np.zeros((len(memories), len(timeouts), len(batches)))
 
@@ -601,7 +608,7 @@ def fitting(W, B, T, M, model, trace, DEBUG=True):
 	#print(getCostRequest(2, batchServiceTime(2, 2752, 'Resnet')[1], 2752))
 	########## Test ##########
 
-def solver(model, trace, SLO, quantile, constraint, start, end, DEBUG=True):
+def solver(model, trace, slo, quantile, constraint, start, end, DEBUG=True):
 	for i in range(start,end):
 		fnameD0 = 'solver/'+trace+'/MAPs/MAP'+str(i)+'_D0'
 		fnameD1 = 'solver/'+trace+'/MAPs/MAP'+str(i)+'_D1'
@@ -630,7 +637,7 @@ def solver(model, trace, SLO, quantile, constraint, start, end, DEBUG=True):
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='This script find the optimal parameters for a serverless system.')
-	parser.add_argument('--model', type=str, choices=['TF-resnetV2', 'TF-inceptionV4', 'mxnet-resnet50'], help='The ML model')
+	parser.add_argument('--model', type=str, choices=['Tree-LSTM', 'TF-resnetV2', 'TF-inceptionV4', 'mxnet-resnet50'], help='The ML model')
 	parser.add_argument('--percentile', type=float, help='The percentile on which the SLO is specified')
 	parser.add_argument('--slo', type=float, help='The SLO value')
 	parser.add_argument('--constraint', type=str, choices=['latency', 'cost'], help='The measure on which the SLO is specified')
