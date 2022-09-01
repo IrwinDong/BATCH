@@ -4,17 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 
-batch_size = 100
-SLO = 100
-time_out = 0.48
+SLO = 1000 #ms
+batch_size = 50
+time_out = 0.97
 inter_arrival = 20.0
 data = []
 with open(f"Latency_per_request_batch_{batch_size}_inter_arrival_{inter_arrival}_time_out{time_out}_.log", "r") as fd:
     lines = fd.readlines()
     for line in lines:
         arr = line.split("\t")
-        if len(arr) < 7:
-            continue
+        #if len(arr) < 7:
+        #    continue
         latency = float(arr[1])
         data.append(latency)
         line = fd.readline()

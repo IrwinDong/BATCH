@@ -157,13 +157,18 @@ def batchServiceTime(B, m, model):
 		exit(-1)
 
 	services = []
+	service_time = {1:1734.26, 2:2313.26, 3:2875.27, 4:3398.42, 5:3934.34,6:4531.25, 7:5047.03, 8:5581.86, 
+		            9:6079.07, 10:6724.86, 11:7292.53, 12:7807.46, 13:8375.48, 14:8985.00, 15:9542.51,16:10100.73, 
+					17:10595.58, 18:11476.64, 19:13429.97, 20:14089.95}
 	for k in range(1,B+1):
 		if model == 'mxnet-resnet50':
-			serv = t0 + t1*k + t2*m + t3*k**2 + t4*k*m + t5*m**2 + t6*k**3 + t7*m*k**2 + t8*k*m**2 + t9*m**3 + t10*k**4 + t11*m*k**3 + t12*(k**2)*(m**2) + t13*k*m**3 + t14*m**4
+			#serv = t0 + t1*k + t2*m + t3*k**2 + t4*k*m + t5*m**2 + t6*k**3 + t7*m*k**2 + t8*k*m**2 + t9*m**3 + t10*k**4 + t11*m*k**3 + t12*(k**2)*(m**2) + t13*k*m**3 + t14*m**4
+			serv = service_time[k] / 1000.0
 		elif model == 'Tree-LSTM':
-			serv = TREE_12_SERVICE_TIME[k] / 1000
+			serv = TREE_12_SERVICE_TIME[k] / 1000.0
 		else:
-			serv = t0 + t1*k + t2*m + t3*k**2 + t4*k*m + t5*m**2 + t6*k**3 + t7*m*k**2 + t8*k*m**2 + t9*m**3
+			#serv = t0 + t1*k + t2*m + t3*k**2 + t4*k*m + t5*m**2 + t6*k**3 + t7*m*k**2 + t8*k*m**2 + t9*m**3
+			serv = service_time[k] / 1000.0
 		services.append(serv)
 
 	return services
@@ -257,13 +262,13 @@ def latencyCdfDetService(D0, D1, B, T, M, model, x):
 	v = batchServiceTime(B, M, model)
 	idx = findPositionX(B, M, model, x)
 
-	if (B == 1 and x < max(v)) or (B > 1 and x < min(v)):
+	if (B == 1 and x < max(v)) or (B > 1 and x < min(v) + T):
 		return 0.0
 	elif x > max(v) + min(tau, T):
 		return 1.0
 	elif x <= v[idx] + T and idx < B-1:
 		return ((x - v[idx])/T) * q[idx] + sum(q[0:idx])
-	elif x <= v[idx] + T and idx == B-1:
+	elif x <= v[idx] + min(tau, T) and idx == B-1:
 		return ((x - v[idx])/min(tau, T)) * q[idx] + sum(q[0:idx])
 	else:
 		return sum(q[0:idx+1])
@@ -274,6 +279,11 @@ def latencyPercentileDetService(D0, D1, B, T, M, model, x, quantile, err):
 	xTest = (xUp + xLow) / 2
 	perc = latencyCdfDetService(D0, D1, B, T, M, model, xTest)
 
+	if perc >= quantile:
+		lastGoodXTest = xTest
+	else:
+		lastGoodXTest = x
+
 	while xUp - xLow > err:
 		if perc < quantile:
 			xLow = xTest
@@ -281,8 +291,10 @@ def latencyPercentileDetService(D0, D1, B, T, M, model, x, quantile, err):
 			xUp = xTest
 		xTest = (xUp + xLow) / 2
 		perc = latencyCdfDetService(D0, D1, B, T, M, model, xTest)
+		if perc >= quantile:
+			lastGoodXTest = xTest
 
-	return xTest
+	return lastGoodXTest
 
 def averageLatencyExpService(D0, D1, B, T, M, model):
 	phases = len(D0)
@@ -383,14 +395,17 @@ def solveOptimizationProblem(D0, D1, model, quantile, slo, constraint):
 		print('You can optimize either __latency__ or __cost__.')
 		exit(-1)
 
-	maxTime = 30.0 # percentile threshold
-	err = 0.01
+    # maxTime used to evaluate the probability wihtin the time that the
+    # batch of requests can be served. in seconds
+	maxTime = 30.0 
+	err = 0.001 # resolution is 1 ms
 	
 	#memories = [x for x in range(1280,3008+1,64)]
 	memories = [x for x in range(1280,1280+1,1)]
 	timeouts = [x for x in np.arange(0.01,0.5,0.01)]
-	batches = [x for x in range(20,20+1,1)]
-	#batches = [x for x in range(100,100+1,1)]
+	#timeouts = [x for x in np.arange(0.01,0.5,0.01)]
+	#batches = [x for x in range(20,20+1,1)]
+	batches = [x for x in range(50,50+1,1)]
 	matLatency = np.zeros((len(memories), len(timeouts), len(batches)))
 	matCost = np.zeros((len(memories), len(timeouts), len(batches)))
 
@@ -577,7 +592,7 @@ def fitting(W, B, T, M, model, trace, DEBUG=True):
 	for x in xModel:
 		yModel.append(latencyCdfDetService(D0, D1, B, T, M, model, x))
 		if DEBUG:# and x%xModelMax == 0:
-			 printProgressBar(len(yModel), xModelLen, prefix = 'Modeling:', suffix = 'Complete', length = 50)
+			printProgressBar(len(yModel), xModelLen, prefix = 'Modeling:', suffix = 'Complete', length = 50)
 
 	if DEBUG:
 		print('The model has been generated')

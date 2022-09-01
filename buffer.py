@@ -90,6 +90,7 @@ def generate_request(batch_size, time_out, arrival_process, inter_arrival, trace
 
         timestamp += delay
 
+    serverless.MyServerless.close()
     print("mean batch size {}".format(np.mean(bs)))
 
 def get_args():
@@ -108,12 +109,12 @@ if __name__ == '__main__':
     my_args = get_args()
    
     print("Starting Experiment for") 
-    print("batch = {}\tarrival process = {}\ttiem out = {}\n".format(my_args.batch_size, my_args.arrival_process, my_args.time_out))
+    print("batch = {}\tarrival process = {}\ttime out = {}\n".format(my_args.batch_size, my_args.arrival_process, my_args.time_out))
     #Irwin response = mylambda.update_function_configuration(FunctionName = 'mxnet-lambda-v2', MemorySize=my_args.memory)
     
     generate_request(my_args.batch_size, my_args.time_out, my_args.arrival_process, my_args.inter_arrival, 
                     my_args.trace_path, my_args.function_name)
-    print("Done batch = {}\tarrival process = {}\ttiem out = {}\n".format(my_args.batch_size, my_args.arrival_process, my_args.time_out))
+    print("Done batch = {}\tarrival process = {}\ttime out = {}\n".format(my_args.batch_size, my_args.arrival_process, my_args.time_out))
     
 
     '''batch_size = [1] #,5,10,15,20] 
@@ -127,8 +128,8 @@ if __name__ == '__main__':
     for inter_arrival in inter_arrivals:
         for batch in batch_size:
             for tout in time_out:
-                print("batch = {}\tinter_arrival = {}\ttiem out = {}\n".format(batch, inter_arrival, tout))
+                print("batch = {}\tinter_arrival = {}\ttime out = {}\n".format(batch, inter_arrival, tout))
                 generate_request(batch, tout, arrival_process, inter_arrival, trace_path, function_name)
-                print(" Done batch = {}\tinter_arrival = {}\ttiem out = {}\n".format(batch, inter_arrival, tout))
+                print(" Done batch = {}\tinter_arrival = {}\ttime out = {}\n".format(batch, inter_arrival, tout))
                 sleep(30)
     '''

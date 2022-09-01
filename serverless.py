@@ -1,3 +1,4 @@
+from pydoc import classname
 import boto3
 import threading
 import time
@@ -22,6 +23,10 @@ class MyRequest():
 		print("start = {} end = {} latency =- {}".format(self.arrival_time, self.end_time, self.latency))
 
 class MyServerless(threading.Thread):
+	mutex_1 = threading.Lock()
+	mutex_2 = threading.Lock()
+	fp = None
+	fl = None
 	
 	def __init__ (self, batch_size, queue_time, request_list, actual_batch_size, inter_arrival, time_out, function_name):
 		threading.Thread.__init__(self)
@@ -53,31 +58,35 @@ class MyServerless(threading.Thread):
 		mutex_lock2.release()
 		return batch_service_time['Payload'].read()
 
-		
-
 	def run(self):
 		
 		file_batch_latency = "Latency_perbatch_batch_{}_inter_arrival_{}_time_out{}_.log".format(self.actual_batch_size,
 				      self.inter_arrival,self.time_out) # "exp"
 		file_request_latency = "Latency_per_request_batch_{}_inter_arrival_{}_time_out{}_.log".format(self.actual_batch_size,
 			              self.inter_arrival,self.time_out) # "exp"
-		mutex_1 = threading.Lock()
-		mutex_2 = threading.Lock()
 		# Irwin: batch_latency = float(self.send_request())
 		batch_latency = self.service_time[self.batch_size]
 		
-		mutex_1.acquire()
-		with open (file_batch_latency, "a+") as fl:
-			fl.write("batch\t{}\tlatency\t{}\n".format(self.batch_size, batch_latency))
-		fl.close()
-		mutex_1.release()
+		MyServerless.mutex_1.acquire()
+		if not MyServerless.fl:
+			MyServerless.fl = open (file_batch_latency, "a+")
+		MyServerless.fl.write("batch\t{}\tlatency\t{}\n".format(self.batch_size, batch_latency))
+		MyServerless.mutex_1.release()
 
-		with open (file_request_latency,"a+") as fp:
-			my_clock_time = int(time.time()*100)
-			for request in self.request_list:
-				request.latency = request.wait_time + float(batch_latency)
-				mutex_2.acquire()
-				fp.write("Request_latency\t{}\tbatch_size\t{}\t\ttimestamp\t{}\n".format(request.latency,
-					self.batch_size, int(my_clock_time + request.wait_time)))
-				mutex_2.release()
-		fp.close()
+		if not MyServerless.fp:
+			MyServerless.mutex_2.acquire()
+			if not MyServerless.fp:
+				MyServerless.fp = open(file_request_latency,"a+")
+			MyServerless.mutex_2.release()
+		my_clock_time = int(time.time()*100)
+		for request in self.request_list:
+			request.latency = request.wait_time + float(batch_latency)
+			MyServerless.mutex_2.acquire()
+			MyServerless.fp.write("Request_latency\t{}\tbatch_size\t{}\t\ttimestamp\t{}\n".format(request.latency,
+				self.batch_size, int(my_clock_time + request.wait_time)))
+			MyServerless.mutex_2.release()
+	
+	@classmethod
+	def close(cls):
+		cls.fp.close()
+		cls.fl.close()
